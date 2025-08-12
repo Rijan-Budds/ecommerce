@@ -1,5 +1,22 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Environment Setup
+
+Before running the application, you need to set up your environment variables. Create a `.env.local` file in the root directory with the following variables:
+
+```bash
+# MongoDB Connection String
+MONGODB_URI=your_mongodb_connection_string
+
+# JWT Secret for authentication
+JWT_SECRET=your_jwt_secret_key
+
+# Next.js Public API Base URL
+NEXT_PUBLIC_API_BASE_URL=http://localhost:3000
+```
+
+You can copy the `.env.example` file and update it with your actual values.
+
 ## Getting Started
 
 First, run the development server:

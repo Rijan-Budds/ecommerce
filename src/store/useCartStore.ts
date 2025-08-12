@@ -1,9 +1,9 @@
 "use client";
 import { create } from "zustand";
 
-const API = ""; // use Next.js internal API routes
+// use Next.js internal API routes
 
-type CartItem = { productId: string; quantity: number; product?: any };
+type CartItem = { productId: string; quantity: number; product?: { id: string; slug: string; name: string; price: number; category: string; image: string } | null };
 
 interface CartState {
   items: CartItem[];

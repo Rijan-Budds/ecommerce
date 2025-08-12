@@ -67,8 +67,8 @@ export default function CartPage() {
         } else {
           router.push("/profile");
         }
-      } catch (e: any) {
-        toast.error(e.message || "Checkout failed");
+      } catch (e: unknown) {
+        toast.error(e instanceof Error ? e.message : "Checkout failed");
       } finally {
         setSubmitting(false);
       }
@@ -113,7 +113,7 @@ export default function CartPage() {
     const newQuantity = Math.max(1, (current?.quantity || 0) + delta);
     try {
       await cart.update(productId, newQuantity);
-    } catch (error) {
+    } catch {
       toast.error("Failed to update quantity");
     }
   };
@@ -122,7 +122,7 @@ export default function CartPage() {
     try {
       await cart.remove(productId);
       toast.success("Item removed from cart");
-    } catch (error) {
+    } catch {
       toast.error("Failed to remove item from cart");
     }
   };

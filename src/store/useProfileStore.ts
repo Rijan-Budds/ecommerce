@@ -23,7 +23,7 @@ interface ProfileState {
   removeFromWishlistLocal: (productId: string) => void;
 }
 
-const API = ""; // use Next.js internal API routes
+// use Next.js internal API routes
 
 export const useProfileStore = create<ProfileState>((set, get) => ({
   loading: false,

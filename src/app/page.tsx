@@ -90,7 +90,7 @@ function Page() {
         const data = await res.json();
         const list: Product[] = Array.isArray(data.products) ? data.products : [];
         setTrendingProducts(list.slice(0, 8));
-      } catch (e) {
+      } catch {
         setTrendingProducts([]);
       }
     };
@@ -102,8 +102,8 @@ function Page() {
     try {
       await cartStore.add(productId, 1);
       toast.success("Added to cart");
-    } catch (e: any) {
-      toast.error(e.message || "Failed to add to cart");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to add to cart");
     }
   };
 
@@ -118,8 +118,8 @@ function Page() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to update wishlist");
       toast.success("Wishlist updated");
-    } catch (e: any) {
-      toast.error(e.message || "Failed to update wishlist");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to update wishlist");
     }
   };
 

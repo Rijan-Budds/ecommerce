@@ -15,8 +15,8 @@ export function ProductCardActions({ productId }: { productId: string }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to add to cart");
       toast.success("Added to cart");
-    } catch (e: any) {
-      toast.error(e.message || "Failed to add to cart");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to add to cart");
     }
   };
 
@@ -31,8 +31,8 @@ export function ProductCardActions({ productId }: { productId: string }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to update wishlist");
       toast.success("Wishlist updated");
-    } catch (e: any) {
-      toast.error(e.message || "Failed to update wishlist");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to update wishlist");
     }
   };
 

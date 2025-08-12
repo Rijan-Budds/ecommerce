@@ -23,14 +23,14 @@ const Navbar = () => {
         const res = await fetch('/api/me', { credentials: 'include' });
         const data = await res.json();
         setCurrentUser(data.user);
-      } catch (e) {
+      } catch {
         setCurrentUser(null);
       }
     };
     loadMe();
   }, []);
 
-  const handleLoginSubmit = (values: { email: string; password: string }) => {
+  const handleLoginSubmit = () => {
     // After LoginForm success, refetch me
     fetch('/api/me', { credentials: 'include' })
       .then((r) => r.json())
@@ -39,7 +39,7 @@ const Navbar = () => {
     closeModal();
   };
 
-  const handleSignupSubmit = (values: { name: string; email: string; password: string }) => {
+  const handleSignupSubmit = () => {
     // After SignupForm success, refetch me
     fetch('/api/me', { credentials: 'include' })
       .then((r) => r.json())
@@ -55,7 +55,7 @@ const Navbar = () => {
         credentials: 'include',
       });
       setCurrentUser(null);
-    } catch (e) {
+    } catch {
       // ignore
     }
   };
@@ -100,7 +100,7 @@ const Navbar = () => {
               <>
                 <LoginForm onSubmit={handleLoginSubmit} />
                 <p className="mt-4 text-sm text-center text-gray-600 dark:text-gray-400">
-                  Don't have an account?{' '}
+                  Don&apos;t have an account?{' '}
                   <button
                     onClick={() => setModalType('signup')}
                     className="text-primary hover:underline font-medium"

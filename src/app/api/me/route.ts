@@ -8,7 +8,7 @@ export async function GET(req: Request) {
   const token = cookie.split(";").map(s => s.trim()).find(s => s.startsWith("token="))?.split("=")[1];
   if (!token) return NextResponse.json({ user: null });
   try {
-    const payload: any = jwt.verify(token, JWT_SECRET);
+    const payload = jwt.verify(token, JWT_SECRET) as { sub: string; email: string; username: string; role?: string };
     return NextResponse.json({ user: { id: payload.sub, email: payload.email, username: payload.username, role: payload.role || 'user' } });
   } catch {
     return NextResponse.json({ user: null });

@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 async function searchProducts(query: string) {
-  if (!query) return [] as any[];
+  if (!query) return [] as { id: string; slug: string; name: string; price: number; image: string }[];
   const hdrs = await headers();
   const host = hdrs.get("host") || "localhost:3000";
   const proto = hdrs.get("x-forwarded-proto") || "http";
@@ -28,7 +28,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         <p>No results found.</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-          {products.map((p: any) => (
+          {products.map((p: { id: string; slug: string; name: string; price: number; image: string }) => (
             <Link key={p.id} href={`/product/${p.slug}`} className="border rounded-lg p-4 shadow bg-white dark:bg-gray-900 dark:text-white hover:shadow-lg transition-shadow">
               <Image
                 src={p.image}

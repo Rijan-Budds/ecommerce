@@ -30,10 +30,11 @@ export async function POST(req: Request) {
   const user = await User.findById(auth.sub);
   if (user.cart.length === 0) return NextResponse.json({ message: 'Cart is empty' }, { status: 400 });
 
-  const ids = user.cart.map((ci: any) => ci.productId);
+  const ids = user.cart.map((ci: { productId: string }) => ci.productId);
   const docs = ids.length ? await Product.find({ _id: { $in: ids } }).lean() : [];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const productMap = new Map(docs.map((d: any) => [d._id.toString(), { price: d.price, name: d.name, image: d.image }]));
-  const subtotal = user.cart.reduce((sum: number, ci: any) => {
+  const subtotal = user.cart.reduce((sum: number, ci: { productId: string; quantity: number }) => {
     const price = productMap.get(ci.productId)?.price || 0;
     return sum + price * ci.quantity;
   }, 0);
@@ -41,7 +42,7 @@ export async function POST(req: Request) {
   const grandTotal = subtotal + deliveryFee;
 
   user.orders.push({
-    items: user.cart.map((ci: any) => ({
+    items: user.cart.map((ci: { productId: string; quantity: number }) => ({
       productId: ci.productId,
       quantity: ci.quantity,
       name: productMap.get(ci.productId)?.name,

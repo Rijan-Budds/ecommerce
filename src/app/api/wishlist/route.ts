@@ -15,6 +15,7 @@ export async function GET() {
     .map((id: string) => new mongoose.Types.ObjectId(id));
   if (ids.length === 0) return NextResponse.json({ items: [] });
   const docs = await Product.find({ _id: { $in: ids } }).lean();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const items = docs.map((d: any) => ({ id: d._id.toString(), slug: d.slug, name: d.name, price: d.price, category: d.category, image: d.image }));
   return NextResponse.json({ items });
 }

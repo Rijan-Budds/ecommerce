@@ -90,7 +90,7 @@ export default function CartPage() {
       }
     };
     load();
-  }, []);
+  }, [cart, formik]);
 
   const items = cart.items as CartItem[];
   const subtotal = useMemo(

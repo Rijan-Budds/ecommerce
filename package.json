@@ -25,6 +25,7 @@
     "embla-carousel-autoplay": "^8.6.0",
     "embla-carousel-react": "^8.6.0",
     "express": "^5.1.0",
+    "firebase": "^12.1.0",
     "formik": "^2.4.6",
     "gsap": "^3.13.0",
     "jsonwebtoken": "^9.0.2",

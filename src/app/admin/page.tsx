@@ -3,42 +3,13 @@
 import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-
-interface User {
-  _id: string;
-  username: string;
-  email: string;
-}
-
-interface Order {
-  orderId: string;
-  userId: string;
-  username: string;
-  email: string;
-  status: "pending" | "canceled" | "delivered";
-  createdAt: string;
-  subtotal: number;
-  deliveryFee: number;
-  grandTotal: number;
-  customer: {
-    name: string;
-    email: string;
-    address: { street: string; city: string };
-  };
-  items: { productId: string; quantity: number }[];
-}
+import Image from "next/image";
+import { User, Order, Product } from "@/lib/types";
 
 export default function AdminPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
-  const [products, setProducts] = useState<{
-    id: string;
-    slug: string;
-    name: string;
-    price: number;
-    category: string;
-    image: string;
-  }[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
 
   const [name, setName] = useState("");
   const [price, setPrice] = useState("");
@@ -76,8 +47,9 @@ export default function AdminPage() {
         setUsers(uData.users || []);
         setOrders(oData.orders || []);
         setProducts(pData.products || []);
-      } catch (e: any) {
-        toast.error(e.message || "Failed to load admin data");
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to load admin data";
+        toast.error(message);
       } finally {
         setLoading(false);
       }
@@ -92,8 +64,9 @@ export default function AdminPage() {
       });
       const data = await res.json();
       setProducts(data.products || []);
-    } catch (e: any) {
-      toast.error(e.message || "Failed to reload products");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to reload products";
+      toast.error(message);
     }
   };
 
@@ -130,8 +103,9 @@ export default function AdminPage() {
       if (!res.ok) throw new Error(data.message || "Failed to delete order");
       setOrders((prev) => prev.filter((o) => o.orderId !== orderId));
       toast.success("Order deleted");
-    } catch (e: any) {
-      toast.error(e.message || "Failed to delete order");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to delete order";
+      toast.error(message);
     }
   };
 
@@ -145,8 +119,9 @@ export default function AdminPage() {
       if (!res.ok) throw new Error(data.message || "Failed to delete user");
       setUsers((prev) => prev.filter((u) => u._id !== userId));
       toast.success("User deleted");
-    } catch (e: any) {
-      toast.error(e.message || "Failed to delete user");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to delete user";
+      toast.error(message);
     }
   };
 
@@ -175,8 +150,9 @@ export default function AdminPage() {
       setCategory("cpu");
       setImage("");
       await reloadProducts();
-    } catch (e: any) {
-      toast.error(e.message || "Failed to add product");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to add product";
+      toast.error(message);
     }
   };
 
@@ -190,8 +166,9 @@ export default function AdminPage() {
       if (!res.ok) throw new Error(data.message || "Failed to delete");
       setProducts((prev) => prev.filter((p) => p.slug !== slug));
       toast.success("Product deleted");
-    } catch (e: any) {
-      toast.error(e.message || "Failed to delete product");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to delete product";
+      toast.error(message);
     }
   };
 
@@ -207,8 +184,9 @@ export default function AdminPage() {
       if (!res.ok) throw new Error(data.message || "Failed to update");
       setProducts((prev) => prev.map((p) => (p.slug === slug ? data.product : p)));
       toast.success("Product updated");
-    } catch (e: any) {
-      toast.error(e.message || "Failed to update product");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to update product";
+      toast.error(message);
     }
   };
 
@@ -240,8 +218,9 @@ export default function AdminPage() {
 
       setImage(data.url);
       toast.success("Image uploaded successfully");
-    } catch (err: any) {
-      toast.error(err.message || "Failed to upload image");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to upload image";
+      toast.error(message);
     } finally {
       setUploading(false);
     }
@@ -315,8 +294,8 @@ export default function AdminPage() {
                 <span className="font-medium capitalize">{o.status}</span>
               </div>
               <div className="text-sm">
-                Address: {o.customer?.address?.street},{" "}
-                {o.customer?.address?.city}
+                Address: {o.customer?.address},{" "}
+                {o.customer?.city}
               </div>
               <div className="text-sm">
                 Totals: Subtotal $
@@ -336,25 +315,25 @@ export default function AdminPage() {
 
               <div className="mt-2 flex gap-2">
                 <button
-                  onClick={() => updateStatus(o.orderId, "pending")}
+                  onClick={() => updateStatus(o.orderId || o._id, "pending")}
                   className="px-3 py-1 rounded border"
                 >
                   Pending
                 </button>
                 <button
-                  onClick={() => updateStatus(o.orderId, "canceled")}
+                  onClick={() => updateStatus(o.orderId || o._id, "canceled")}
                   className="px-3 py-1 rounded border"
                 >
                   Canceled
                 </button>
                 <button
-                  onClick={() => updateStatus(o.orderId, "delivered")}
+                  onClick={() => updateStatus(o.orderId || o._id, "delivered")}
                   className="px-3 py-1 rounded border"
                 >
                   Delivered
                 </button>
                 <button
-                  onClick={() => deleteOrder(o.orderId)}
+                  onClick={() => deleteOrder(o.orderId || o._id)}
                   className="px-3 py-1 rounded border text-red-600"
                 >
                   Delete
@@ -381,9 +360,9 @@ export default function AdminPage() {
             </thead>
             <tbody>
               {products.map((p) => (
-                <tr key={p.id} className="border-t">
+                <tr key={p._id} className="border-t">
                   <td className="p-2">
-                    <img src={p.image} alt={p.name} className="w-14 h-14 object-cover rounded" />
+                    <Image src={p.image} alt={p.name} width={56} height={56} className="object-cover rounded" />
                   </td>
                   <td className="p-2">
                     <input

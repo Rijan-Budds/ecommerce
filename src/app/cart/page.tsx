@@ -140,7 +140,7 @@ export default function CartPage() {
         ) : (
           items.map((it, idx) => (
             <div
-              key={idx}
+              key={`${it.productId}-${idx}`}
               className="flex items-center gap-4 border rounded p-4 bg-white dark:bg-gray-900 dark:text-white"
             >
               {it.product && (

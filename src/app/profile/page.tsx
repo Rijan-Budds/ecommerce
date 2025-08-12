@@ -133,7 +133,7 @@ export default function ProfilePage() {
                 {o.items && o.items.length > 0 && (
                   <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {o.items.map((it, idx) => (
-                      <div key={idx} className="flex items-center gap-3 border rounded p-2 bg-white/50 dark:bg-gray-800/50">
+                      <div key={`${o._id}-item-${idx}`} className="flex items-center gap-3 border rounded p-2 bg-white/50 dark:bg-gray-800/50">
                         {it.image && (
                           <Image src={it.image} alt={it.name || "Item"} width={64} height={64} className="object-cover rounded" />
                         )}

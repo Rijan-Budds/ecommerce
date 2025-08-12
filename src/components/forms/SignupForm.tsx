@@ -25,7 +25,7 @@ const validationSchema = Yup.object({
 const SignupForm = ({ onSubmit }: SignupFormProps) => {
   const handleSubmit = async (
     values: { name: string; email: string; password: string },
-    { setSubmitting, resetForm }: any
+    { setSubmitting, resetForm }: { setSubmitting: (isSubmitting: boolean) => void; resetForm: () => void }
   ) => {
     try {
       const response = await fetch('/api/register', {

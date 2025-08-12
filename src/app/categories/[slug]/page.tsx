@@ -8,6 +8,7 @@ import { Product } from "@/lib/models";
 async function fetchProductsByCategory(slug: string) {
   await connectToDatabase();
   const docs = await Product.find({ category: { $regex: `^${slug}$`, $options: 'i' } }).lean();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return docs.map((d: any) => ({ id: d._id.toString(), slug: d.slug, name: d.name, price: d.price, image: d.image, category: d.category }));
 }
 
@@ -23,7 +24,7 @@ const CategoryPage = async ({ params }: { params: Promise<{ slug: string }> }) =
         <p>No products found.</p>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-          {products.map((p: any) => (
+          {products.map((p: { id: string; slug: string; name: string; price: number; image: string; category: string }) => (
             <div key={p.id} className="border rounded-lg p-4 shadow bg-white dark:bg-gray-900 dark:text-white hover:shadow-lg transition-shadow">
               <Link href={`/product/${p.slug}`} passHref>
                 <div className="cursor-pointer">

@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { useProfileStore } from "@/store/useProfileStore";
 
-import { Product, OrderItem, Order } from "@/lib/types";
+
 
 export default function ProfilePage() {
   const router = useRouter();

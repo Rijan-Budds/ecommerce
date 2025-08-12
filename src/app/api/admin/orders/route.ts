@@ -5,12 +5,12 @@ import { getAuth } from "@/lib/auth";
 import { Order, User as UserType } from "@/lib/types";
 
 interface LeanUser extends Omit<UserType, '_id'> {
-  _id: any;
+  _id: string | { toString(): string };
   orders?: Order[];
 }
 
 interface LeanOrder extends Omit<Order, '_id'> {
-  _id: any;
+  _id: string | { toString(): string };
 }
 
 export async function GET() {

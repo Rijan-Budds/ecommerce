@@ -88,8 +88,8 @@ export default function AdminPage() {
         prev.map((o) => (o.orderId === orderId ? { ...o, status } : o))
       );
       toast.success("Order status updated");
-    } catch (e: any) {
-      toast.error(e.message || "Failed to update status");
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : "Failed to update status");
     }
   };
 
@@ -450,10 +450,12 @@ export default function AdminPage() {
 
           {/* Image preview */}
           {image && (
-            <img
+            <Image
               src={image}
               alt="Uploaded preview"
-              className="w-40 h-40 object-cover rounded mt-2 md:col-span-2"
+              width={160}
+              height={160}
+              className="object-cover rounded mt-2 md:col-span-2"
             />
           )}
 

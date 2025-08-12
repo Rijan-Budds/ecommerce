@@ -12,13 +12,14 @@ export async function GET(req: Request) {
   const category = searchParams.get("category");
   const q = searchParams.get("q");
 
-  const query: any = {};
+  const query: Record<string, unknown> = {};
   if (category) query.category = { $regex: `^${escapeRegex(category)}$`, $options: "i" };
   if (q) {
     const regex = new RegExp(escapeRegex(q), "i");
     Object.assign(query, { $or: [{ name: regex }, { slug: regex }, { category: regex }] });
   }
   const docs = await Product.find(query).lean();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const products = docs.map((d: any) => ({
     id: d._id.toString(), slug: d.slug, name: d.name, price: d.price, category: d.category, image: d.image,
   }));

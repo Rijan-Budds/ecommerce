@@ -2,11 +2,9 @@ import { NextResponse } from "next/server";
 import { connectToDatabase } from "@/lib/db";
 import { User, Product } from "@/lib/models";
 import { getAuth } from "@/lib/auth";
-import { CartItem, Product as ProductType } from "@/lib/types";
+import { CartItem } from "@/lib/types";
 
-interface LeanProduct extends Omit<ProductType, '_id'> {
-  _id: any;
-}
+
 
 export async function GET() {
   await connectToDatabase();
@@ -15,8 +13,10 @@ export async function GET() {
   const user = await User.findById(auth.sub);
   const ids = user.cart.map((ci: CartItem) => ci.productId);
   const docs = ids.length ? await Product.find({ _id: { $in: ids } }).lean() : [];
-  const map = new Map(docs.map((d: LeanProduct) => [d._id.toString(), { id: d._id.toString(), slug: d.slug, name: d.name, price: d.price, category: d.category, image: d.image }]));
-  const detailed = user.cart.map((ci: CartItem) => ({ ...ci.toObject(), product: map.get(ci.productId) || null }));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const map = new Map(docs.map((d: any) => [d._id.toString(), { id: d._id.toString(), slug: d.slug, name: d.name, price: d.price, category: d.category, image: d.image }]));
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const detailed = user.cart.map((ci: any) => ({ ...ci.toObject(), product: map.get(ci.productId) || null }));
   return NextResponse.json({ items: detailed });
 }
 

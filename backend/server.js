@@ -1,7 +1,7 @@
 import express from "express";
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
-import cors from "cors"; // import cors
+import cors from "cors";
 import jwt from "jsonwebtoken";
 import cookieParser from "cookie-parser";
 import multer from "multer";
@@ -26,24 +26,39 @@ app.use(
     origin: "http://localhost:3000",
     credentials: true,
   })
-); // enable CORS for Next.js dev server with credentials
-app.use(express.json()); // built-in JSON body parser
+);
+app.use(express.json());
 app.use(cookieParser());
 
+// Get current directory for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 // Ensure uploads directory exists and is served statically
-const uploadDir = path.resolve("uploads");
+const uploadDir = path.join(__dirname, "uploads");
+console.log("Upload directory path:", uploadDir);
+
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
+  console.log("Created uploads directory");
+} else {
+  console.log("Uploads directory already exists");
 }
+
 app.use("/uploads", express.static(uploadDir));
 
 // Configure multer for image uploads
 const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadDir),
+  destination: (_req, _file, cb) => {
+    console.log("Multer destination called, uploadDir:", uploadDir);
+    cb(null, uploadDir);
+  },
   filename: (_req, file, cb) => {
     const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
     const ext = path.extname(file.originalname || "");
-    cb(null, `${uniqueSuffix}${ext}`);
+    const filename = `${uniqueSuffix}${ext}`;
+    console.log("Multer filename generated:", filename);
+    cb(null, filename);
   },
 });
 
@@ -51,6 +66,7 @@ const upload = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
   fileFilter: (_req, file, cb) => {
+    console.log("File filter check:", file.mimetype);
     if (!file.mimetype || !file.mimetype.startsWith("image/")) {
       return cb(new Error("Only image files are allowed"));
     }
@@ -58,12 +74,28 @@ const upload = multer({
   },
 });
 
-// MongoDB connection - you can use MongoDB Atlas or local MongoDB
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://rijanbuddhacharya:Rijan123@rijan.cmzjbaa.mongodb.net/ecommerce?retryWrites=true&w=majority&appName=Rijan';
+// MongoDB connection with better error handling
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb+srv://rijanbuddhacharya:Rijan1234@rijan.cmzjbaa.mongodb.net/ecommerce?retryWrites=true&w=majority&appName=Rijan';
 
+console.log("Attempting to connect to MongoDB...");
 mongoose.connect(MONGODB_URI)
-.then(() => console.log('Connected to MongoDB'))
-.catch(err => console.error('MongoDB connection error:', err));
+.then(() => {
+  console.log('✅ Connected to MongoDB successfully');
+  console.log('Database name:', mongoose.connection.db.databaseName);
+})
+.catch(err => {
+  console.error('❌ MongoDB connection error:', err);
+  process.exit(1);
+});
+
+// Monitor MongoDB connection
+mongoose.connection.on('error', err => {
+  console.error('MongoDB connection error:', err);
+});
+
+mongoose.connection.on('disconnected', () => {
+  console.log('MongoDB disconnected');
+});
 
 const cartItemSchema = new mongoose.Schema({
   productId: { type: String, required: true },
@@ -73,7 +105,6 @@ const cartItemSchema = new mongoose.Schema({
 const orderItemSchema = new mongoose.Schema({
   productId: { type: String, required: true },
   quantity: { type: Number, required: true },
-  // Snapshot of product at time of order
   name: { type: String },
   image: { type: String },
   price: { type: Number },
@@ -98,18 +129,14 @@ const orderSchema = new mongoose.Schema({
 
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
-  email:    { type: String, required: true, unique: true },
+  email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  wishlist: { type: [String], default: [] }, // array of productId
-  cart:     { type: [cartItemSchema], default: [] },
-  orders:   { type: [orderSchema], default: [] },
-});
+  wishlist: { type: [String], default: [] },
+  cart: { type: [cartItemSchema], default: [] },
+  orders: { type: [orderSchema], default: [] },
+}, { timestamps: true }); // Add timestamps
 
 const User = mongoose.model('User', userSchema);
-
-// Products: switch from file-based storage to MongoDB model
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 const productSchema = new mongoose.Schema(
   {
@@ -124,7 +151,7 @@ const productSchema = new mongoose.Schema(
 
 const Product = mongoose.model('Product', productSchema);
 
-// Shipping cities and fees (example)
+// Shipping cities and fees
 const cityFees = {
   Kathmandu: 3.5,
   Pokhara: 4.5,
@@ -149,7 +176,7 @@ function requireAuth(req, res, next) {
   if (!token) return res.status(401).json({ message: 'Unauthorized' });
   try {
     const payload = jwt.verify(token, JWT_SECRET);
-    req.user = payload; // attach to request
+    req.user = payload;
     next();
   } catch (err) {
     return res.status(401).json({ message: 'Unauthorized' });
@@ -177,10 +204,8 @@ async function generateUniqueSlugFromName(name) {
   const base = slugify(name || 'item');
   let candidate = base || 'item';
   let counter = 2;
-  // Ensure slug uniqueness against the database
-  // eslint-disable-next-line no-constant-condition
+  
   while (true) {
-    // eslint-disable-next-line no-await-in-loop
     const exists = await Product.exists({ slug: candidate });
     if (!exists) return candidate;
     candidate = `${base}-${counter++}`;
@@ -203,14 +228,17 @@ function mapProduct(doc) {
   };
 }
 
+// Products endpoints
 app.get('/products', async (req, res) => {
   try {
+    console.log("GET /products called");
     const { category } = req.query;
     let query = {};
     if (category) {
       query = { category: { $regex: `^${escapeRegex(String(category))}$`, $options: 'i' } };
     }
     const docs = await Product.find(query).lean();
+    console.log(`Found ${docs.length} products`);
     res.json({ products: docs.map((d) => mapProduct(d)) });
   } catch (err) {
     console.error('GET /products error:', err);
@@ -218,7 +246,6 @@ app.get('/products', async (req, res) => {
   }
 });
 
-// Product search by name, slug, or category (case-insensitive)
 app.get('/search', async (req, res) => {
   const q = (req.query.q || '').toString().trim();
   if (!q) return res.json({ products: [] });
@@ -250,24 +277,39 @@ app.get('/shipping/cities', (_req, res) => {
   res.json({ cities: Object.keys(cityFees).map((name) => ({ name, fee: cityFees[name] })) })
 });
 
-// Image upload endpoint
-app.post('/upload', requireAuth, requireAdmin, (req, res, next) => {
+// Image upload endpoint with enhanced logging
+app.post('/upload', requireAuth, requireAdmin, (req, res) => {
+  console.log("Upload endpoint called");
   upload.single('image')(req, res, function (err) {
     if (err) {
+      console.error("Upload error:", err);
       return res.status(400).json({ message: err.message || 'Upload error' });
     }
     if (!req.file) {
+      console.error("No file uploaded");
       return res.status(400).json({ message: 'No file uploaded' });
     }
+    
+    console.log("File uploaded successfully:", req.file);
     const publicUrl = `/uploads/${req.file.filename}`;
-    // Provide absolute URL for convenience on the frontend
     const absoluteUrl = `${req.protocol}://${req.get('host')}${publicUrl}`;
+    
+    // Verify file exists on disk
+    const filePath = path.join(uploadDir, req.file.filename);
+    if (fs.existsSync(filePath)) {
+      console.log("File verified on disk:", filePath);
+    } else {
+      console.error("File NOT found on disk:", filePath);
+    }
+    
     return res.status(201).json({ url: absoluteUrl, path: publicUrl });
   });
 });
 
+// Registration with enhanced logging
 app.post('/register', async (req, res) => {
   const { username, email, password } = req.body;
+  console.log("Registration attempt for:", { username, email });
 
   if (!username || !email || !password) {
     return res.status(400).json({ message: 'Please provide username, email, and password' });
@@ -276,6 +318,7 @@ app.post('/register', async (req, res) => {
   try {
     const existingUser = await User.findOne({ $or: [{ username }, { email }] });
     if (existingUser) {
+      console.log("User already exists:", existingUser.username, existingUser.email);
       return res.status(400).json({ message: 'Username or email already taken' });
     }
 
@@ -287,20 +330,32 @@ app.post('/register', async (req, res) => {
       password: hashedPassword,
     });
 
-    await user.save();
+    const savedUser = await user.save();
+    console.log("✅ User registered successfully:", savedUser._id, savedUser.username);
 
-    // Optionally sign in immediately after registration
-    const token = signUserToken(user, 'user');
+    // Verify user was saved by querying
+    const verifyUser = await User.findById(savedUser._id);
+    console.log("✅ User verification:", verifyUser ? "Found" : "Not found");
+
+    const token = signUserToken(savedUser, 'user');
     res.cookie('token', token, {
       httpOnly: true,
       sameSite: 'lax',
-      secure: false, // set true behind HTTPS
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      secure: false,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    res.status(201).json({ message: 'User registered successfully', user: { id: user._id, email: user.email, username: user.username, role: 'user' } });
+    res.status(201).json({ 
+      message: 'User registered successfully', 
+      user: { 
+        id: savedUser._id, 
+        email: savedUser.email, 
+        username: savedUser.username, 
+        role: 'user' 
+      } 
+    });
   } catch (error) {
-    console.error('Registration error:', error);
+    console.error('❌ Registration error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -334,7 +389,7 @@ app.post('/login', async (req, res) => {
     res.cookie('token', token, {
       httpOnly: true,
       sameSite: 'lax',
-      secure: false, // set true behind HTTPS
+      secure: false,
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -359,43 +414,110 @@ app.get('/me', (req, res) => {
 
 // Admin endpoints
 app.get('/admin/users', requireAuth, requireAdmin, async (_req, res) => {
-  const users = await User.find({}, { username: 1, email: 1 }).lean();
-  res.json({ users });
+  try {
+    const users = await User.find({}, { username: 1, email: 1, createdAt: 1 }).lean();
+    console.log(`Found ${users.length} users in database`);
+    res.json({ users });
+  } catch (err) {
+    console.error('GET /admin/users error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
 });
 
 app.delete('/admin/users/:userId', requireAuth, requireAdmin, async (req, res) => {
   const { userId } = req.params;
-  // Prevent deleting the hard-coded admin
   if (!userId || userId === 'admin') {
     return res.status(400).json({ message: 'Invalid userId' });
   }
-  const user = await User.findById(userId);
-  if (!user) return res.status(404).json({ message: 'User not found' });
-  await User.deleteOne({ _id: userId });
-  return res.json({ message: 'User deleted' });
+  try {
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    await User.deleteOne({ _id: userId });
+    console.log("User deleted:", userId);
+    return res.json({ message: 'User deleted' });
+  } catch (err) {
+    console.error('DELETE /admin/users error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Admin products with enhanced logging
+app.post('/admin/products', requireAuth, requireAdmin, async (req, res) => {
+  const { name, slug: incomingSlug, price, category, image } = req.body || {};
+  console.log("Creating product with data:", { name, price, category, image });
+  
+  if (!name || price == null || !category || !image) {
+    return res.status(400).json({ message: 'Missing fields' });
+  }
+  
+  try {
+    const existingByName = await Product.findOne({ 
+      name: { $regex: `^${escapeRegex(String(name).trim())}$`, $options: 'i' } 
+    });
+    if (existingByName) {
+      console.log("Product name already exists:", name);
+      return res.status(400).json({ message: 'Product name already exists' });
+    }
+
+    let slug = (incomingSlug || '').toString().trim();
+    if (!slug) {
+      slug = await generateUniqueSlugFromName(name);
+    } else {
+      slug = slugify(slug);
+      const conflict = await Product.exists({ slug });
+      if (conflict) slug = await generateUniqueSlugFromName(name);
+    }
+
+    const productData = {
+      name: String(name).trim(),
+      slug,
+      price: Number(price),
+      category: String(category).toLowerCase().trim(),
+      image: String(image).trim(),
+    };
+
+    console.log("Creating product with final data:", productData);
+    const created = await Product.create(productData);
+    console.log("✅ Product created successfully:", created._id, created.name);
+    
+    // Verify product was saved
+    const verifyProduct = await Product.findById(created._id);
+    console.log("✅ Product verification:", verifyProduct ? "Found" : "Not found");
+    
+    res.status(201).json({ message: 'Product added', product: mapProduct(created) });
+  } catch (err) {
+    console.error('❌ POST /admin/products error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
 });
 
 app.get('/admin/orders', requireAuth, requireAdmin, async (_req, res) => {
-  const users = await User.find({}).lean();
-  const allOrders = [];
-  for (const u of users) {
-    (u.orders || []).forEach((o) => {
-      allOrders.push({
-        orderId: o._id?.toString(),
-        userId: u._id.toString(),
-        username: u.username,
-        email: u.email,
-        status: o.status,
-        createdAt: o.createdAt,
-        subtotal: o.subtotal,
-        deliveryFee: o.deliveryFee,
-        grandTotal: o.grandTotal,
-        customer: o.customer,
-        items: o.items,
+  try {
+    const users = await User.find({}).lean();
+    const allOrders = [];
+    for (const u of users) {
+      (u.orders || []).forEach((o) => {
+        allOrders.push({
+          orderId: o._id?.toString(),
+          userId: u._id.toString(),
+          username: u.username,
+          email: u.email,
+          status: o.status,
+          createdAt: o.createdAt,
+          subtotal: o.subtotal,
+          deliveryFee: o.deliveryFee,
+          grandTotal: o.grandTotal,
+          customer: o.customer,
+          items: o.items,
+        });
       });
-    });
+    }
+    console.log(`Found ${allOrders.length} total orders`);
+    res.json({ orders: allOrders });
+  } catch (err) {
+    console.error('GET /admin/orders error:', err);
+    res.status(500).json({ message: 'Server error' });
   }
-  res.json({ orders: allOrders });
 });
 
 app.patch('/admin/orders/:orderId', requireAuth, requireAdmin, async (req, res) => {
@@ -403,22 +525,26 @@ app.patch('/admin/orders/:orderId', requireAuth, requireAdmin, async (req, res) 
   const { status } = req.body || {};
   if (!['pending', 'canceled', 'delivered'].includes(status)) return res.status(400).json({ message: 'Invalid status' });
 
-  const users = await User.find({});
-  let updated = false;
-  for (const u of users) {
-    const order = u.orders.id(orderId);
-    if (order) {
-      order.status = status;
-      await u.save();
-      updated = true;
-      break;
+  try {
+    const users = await User.find({});
+    let updated = false;
+    for (const u of users) {
+      const order = u.orders.id(orderId);
+      if (order) {
+        order.status = status;
+        await u.save();
+        updated = true;
+        break;
+      }
     }
+    if (!updated) return res.status(404).json({ message: 'Order not found' });
+    res.json({ message: 'Order updated' });
+  } catch (err) {
+    console.error('PATCH /admin/orders error:', err);
+    res.status(500).json({ message: 'Server error' });
   }
-  if (!updated) return res.status(404).json({ message: 'Order not found' });
-  res.json({ message: 'Order updated' });
 });
 
-// Admin delete order
 app.delete('/admin/orders/:orderId', requireAuth, requireAdmin, async (req, res) => {
   const { orderId } = req.params;
   try {
@@ -427,7 +553,6 @@ app.delete('/admin/orders/:orderId', requireAuth, requireAdmin, async (req, res)
     for (const u of users) {
       const order = u.orders.id(orderId);
       if (order) {
-        // Remove the subdocument and save
         order.deleteOne();
         await u.save();
         removed = true;
@@ -442,40 +567,6 @@ app.delete('/admin/orders/:orderId', requireAuth, requireAdmin, async (req, res)
   }
 });
 
-app.post('/admin/products', requireAuth, requireAdmin, async (req, res) => {
-  const { name, slug: incomingSlug, price, category, image } = req.body || {};
-  if (!name || price == null || !category || !image) {
-    return res.status(400).json({ message: 'Missing fields' });
-  }
-  try {
-    // Enforce unique product name (case-insensitive)
-    const existingByName = await Product.findOne({ name: { $regex: `^${escapeRegex(String(name).trim())}$`, $options: 'i' } });
-    if (existingByName) return res.status(400).json({ message: 'Product name already exists' });
-
-    let slug = (incomingSlug || '').toString().trim();
-    if (!slug) {
-      slug = await generateUniqueSlugFromName(name);
-    } else {
-      slug = slugify(slug);
-      const conflict = await Product.exists({ slug });
-      if (conflict) slug = await generateUniqueSlugFromName(name);
-    }
-
-    const created = await Product.create({
-      name: String(name).trim(),
-      slug,
-      price: Number(price),
-      category: String(category).toLowerCase().trim(),
-      image: String(image).trim(),
-    });
-    res.status(201).json({ message: 'Product added', product: mapProduct(created) });
-  } catch (err) {
-    console.error('POST /admin/products error:', err);
-    res.status(500).json({ message: 'Server error' });
-  }
-});
-
-// Admin update product (by slug)
 app.patch('/admin/products/:slug', requireAuth, requireAdmin, async (req, res) => {
   const { slug } = req.params;
   const { name, price, category, image } = req.body || {};
@@ -483,7 +574,6 @@ app.patch('/admin/products/:slug', requireAuth, requireAdmin, async (req, res) =
     const doc = await Product.findOne({ slug });
     if (!doc) return res.status(404).json({ message: 'Product not found' });
 
-    // If name changes, ensure uniqueness (case-insensitive)
     if (name != null && String(name).trim().toLowerCase() !== doc.name.trim().toLowerCase()) {
       const existingByName = await Product.findOne({ name: { $regex: `^${escapeRegex(String(name).trim())}$`, $options: 'i' } });
       if (existingByName && existingByName._id.toString() !== doc._id.toString()) {
@@ -497,6 +587,7 @@ app.patch('/admin/products/:slug', requireAuth, requireAdmin, async (req, res) =
     if (image != null) doc.image = String(image).trim();
 
     await doc.save();
+    console.log("Product updated:", doc._id, doc.name);
     res.json({ message: 'Product updated', product: mapProduct(doc) });
   } catch (err) {
     console.error('PATCH /admin/products/:slug error:', err);
@@ -504,7 +595,6 @@ app.patch('/admin/products/:slug', requireAuth, requireAdmin, async (req, res) =
   }
 });
 
-// Admin delete product (by slug)
 app.delete('/admin/products/:slug', requireAuth, requireAdmin, async (req, res) => {
   const { slug } = req.params;
   try {
@@ -513,18 +603,17 @@ app.delete('/admin/products/:slug', requireAuth, requireAdmin, async (req, res) 
     const productIdStr = product._id.toString();
     await Product.deleteOne({ _id: product._id });
 
-    // Remove from users' carts and wishlists to avoid dangling references
     try {
       const users = await User.find({});
       for (const u of users) {
         u.cart = u.cart.filter((ci) => ci.productId !== productIdStr);
         u.wishlist = u.wishlist.filter((pid) => pid !== productIdStr);
-        // Save only if modified
         await u.save();
       }
     } catch (e) {
       console.error('Failed to cascade delete from users:', e);
     }
+    console.log("Product deleted:", productIdStr);
     res.json({ message: 'Product deleted' });
   } catch (err) {
     console.error('DELETE /admin/products/:slug error:', err);
@@ -532,10 +621,9 @@ app.delete('/admin/products/:slug', requireAuth, requireAdmin, async (req, res) 
   }
 });
 
-// Wishlist
+// Wishlist endpoints
 app.get('/wishlist', requireAuth, async (req, res) => {
   try {
-    // Admin does not have a user document; return empty wishlist for admin
     if (req.user?.role === 'admin') {
       return res.json({ items: [] });
     }
@@ -554,14 +642,19 @@ app.get('/wishlist', requireAuth, async (req, res) => {
 app.post('/wishlist/toggle', requireAuth, async (req, res) => {
   const { productId } = req.body;
   if (!productId) return res.status(400).json({ message: 'productId required' });
-  const user = await User.findById(req.user.sub);
-  const index = user.wishlist.indexOf(productId);
-  if (index >= 0) user.wishlist.splice(index, 1); else user.wishlist.push(productId);
-  await user.save();
-  res.json({ wishlist: user.wishlist });
+  try {
+    const user = await User.findById(req.user.sub);
+    const index = user.wishlist.indexOf(productId);
+    if (index >= 0) user.wishlist.splice(index, 1); else user.wishlist.push(productId);
+    await user.save();
+    res.json({ wishlist: user.wishlist });
+  } catch (err) {
+    console.error('POST /wishlist/toggle error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
 });
 
-// Cart
+// Cart endpoints
 app.get('/cart', requireAuth, async (req, res) => {
   try {
     const user = await User.findById(req.user.sub);
@@ -586,42 +679,56 @@ app.get('/cart', requireAuth, async (req, res) => {
 app.post('/cart/add', requireAuth, async (req, res) => {
   const { productId, quantity = 1 } = req.body;
   if (!productId) return res.status(400).json({ message: 'productId required' });
-  const user = await User.findById(req.user.sub);
-  const existing = user.cart.find(ci => ci.productId === productId);
-  if (existing) existing.quantity += Number(quantity);
-  else user.cart.push({ productId, quantity: Number(quantity) });
-  await user.save();
-  res.json({ message: 'Added to cart', cart: user.cart });
+  try {
+    const user = await User.findById(req.user.sub);
+    const existing = user.cart.find(ci => ci.productId === productId);
+    if (existing) existing.quantity += Number(quantity);
+    else user.cart.push({ productId, quantity: Number(quantity) });
+    await user.save();
+    res.json({ message: 'Added to cart', cart: user.cart });
+  } catch (err) {
+    console.error('POST /cart/add error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
 });
 
 app.post('/cart/update', requireAuth, async (req, res) => {
   const { productId, quantity } = req.body;
   if (!productId || typeof quantity !== 'number') return res.status(400).json({ message: 'productId and quantity required' });
-  const user = await User.findById(req.user.sub);
-  const existing = user.cart.find(ci => ci.productId === productId);
-  if (!existing) return res.status(404).json({ message: 'Item not found' });
-  if (quantity <= 0) {
-    user.cart = user.cart.filter(ci => ci.productId !== productId);
-  } else {
-    existing.quantity = quantity;
+  try {
+    const user = await User.findById(req.user.sub);
+    const existing = user.cart.find(ci => ci.productId === productId);
+    if (!existing) return res.status(404).json({ message: 'Item not found' });
+    if (quantity <= 0) {
+      user.cart = user.cart.filter(ci => ci.productId !== productId);
+    } else {
+      existing.quantity = quantity;
+    }
+    await user.save();
+    res.json({ message: 'Cart updated', cart: user.cart });
+  } catch (err) {
+    console.error('POST /cart/update error:', err);
+    res.status(500).json({ message: 'Server error' });
   }
-  await user.save();
-  res.json({ message: 'Cart updated', cart: user.cart });
 });
 
 app.post('/cart/remove', requireAuth, async (req, res) => {
   const { productId } = req.body;
   if (!productId) return res.status(400).json({ message: 'productId required' });
-  const user = await User.findById(req.user.sub);
-  user.cart = user.cart.filter(ci => ci.productId !== productId);
-  await user.save();
-  res.json({ message: 'Item removed', cart: user.cart });
+  try {
+    const user = await User.findById(req.user.sub);
+    user.cart = user.cart.filter(ci => ci.productId !== productId);
+    await user.save();
+    res.json({ message: 'Item removed', cart: user.cart });
+  } catch (err) {
+    console.error('POST /cart/remove error:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
 });
 
-// Orders
+// Orders endpoints
 app.get('/orders', requireAuth, async (req, res) => {
   try {
-    // Admin does not have a user document; return empty orders for admin
     if (req.user?.role === 'admin') {
       return res.json({ orders: [] });
     }
@@ -648,10 +755,11 @@ app.post('/orders/checkout', requireAuth, async (req, res) => {
       .filter(Boolean)
       .filter((id) => mongoose.Types.ObjectId.isValid(id))
       .map((id) => new mongoose.Types.ObjectId(id));
-  const docs = ids.length ? await Product.find({ _id: { $in: ids } }).lean() : [];
-  const productMap = new Map(docs.map((d) => [d._id.toString(), { price: d.price, name: d.name, image: d.image }]));
+    const docs = ids.length ? await Product.find({ _id: { $in: ids } }).lean() : [];
+    const productMap = new Map(docs.map((d) => [d._id.toString(), { price: d.price, name: d.name, image: d.image }]));
+    
     const subtotal = user.cart.reduce((sum, ci) => {
-    const price = productMap.get(ci.productId)?.price || 0;
+      const price = productMap.get(ci.productId)?.price || 0;
       return sum + price * ci.quantity;
     }, 0);
 
@@ -681,6 +789,7 @@ app.post('/orders/checkout', requireAuth, async (req, res) => {
     });
     user.cart = [];
     await user.save();
+    console.log("Order created for user:", user.username);
     res.json({ message: 'Order placed', orders: user.orders });
   } catch (err) {
     console.error('POST /orders/checkout error:', err);
@@ -698,6 +807,74 @@ app.post('/logout', (req, res) => {
   res.json({ message: 'Logged out' });
 });
 
+// Add a test endpoint to verify database connectivity
+app.get('/test/db', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    console.log("Testing database connectivity...");
+    
+    // Test basic connection
+    const connectionStatus = mongoose.connection.readyState;
+    const connectionStates = {
+      0: 'disconnected',
+      1: 'connected',
+      2: 'connecting',
+      3: 'disconnecting'
+    };
+    
+    // Count documents
+    const userCount = await User.countDocuments();
+    const productCount = await Product.countDocuments();
+    
+    // Try to create and delete a test document
+    const testProduct = new Product({
+      name: `Test Product ${Date.now()}`,
+      slug: `test-product-${Date.now()}`,
+      price: 99.99,
+      category: 'test',
+      image: '/test.jpg'
+    });
+    
+    const savedTest = await testProduct.save();
+    await Product.deleteOne({ _id: savedTest._id });
+    
+    res.json({
+      message: 'Database test successful',
+      connection: connectionStates[connectionStatus],
+      database: mongoose.connection.db.databaseName,
+      userCount,
+      productCount,
+      testCreateDelete: 'success'
+    });
+  } catch (err) {
+    console.error('Database test failed:', err);
+    res.status(500).json({ 
+      message: 'Database test failed', 
+      error: err.message,
+      connection: mongoose.connection.readyState
+    });
+  }
+});
+
+// Add an endpoint to list files in uploads directory
+app.get('/test/uploads', requireAuth, requireAdmin, (req, res) => {
+  try {
+    const files = fs.readdirSync(uploadDir);
+    res.json({
+      uploadDir,
+      files,
+      count: files.length
+    });
+  } catch (err) {
+    console.error('Error reading uploads directory:', err);
+    res.status(500).json({ 
+      message: 'Error reading uploads directory', 
+      error: err.message 
+    });
+  }
+});
+
 app.listen(port, () => {
-  console.log(`Server running on http://localhost:${port}`);
+  console.log(`🚀 Server running on http://localhost:${port}`);
+  console.log(`📁 Upload directory: ${uploadDir}`);
+  console.log(`🗄️  Database: ${mongoose.connection.db?.databaseName || 'Not connected'}`);
 });

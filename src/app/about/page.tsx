@@ -5,23 +5,23 @@ import { FaLightbulb, FaShieldAlt, FaHeart } from "react-icons/fa";
 
 const teamMembers = [
   {
-    name: "Rijan Shakya",
+    name: "Aastha Malla",
     role: "Founder & CEO",
-    image: "https://randomuser.me/api/portraits/men/75.jpg",
+    image: "/home/rejina.jpg",
     description:
       "Visionary leader and passionate about building amazing products.",
   },
   {
-    name: "Sita Rai",
+    name: "Parisma Buddhacharya",
     role: "Lead Designer",
-    image: "https://randomuser.me/api/portraits/women/65.jpg",
+    image: "/home/parisma.jpg",
     description:
       "Creative mind behind our sleek and user-friendly designs.",
   },
   {
-    name: "Ram Thapa",
+    name: "Rina Buddhacharya",
     role: "Senior Developer",
-    image: "https://randomuser.me/api/portraits/men/33.jpg",
+    image: "/home/asdf.jpg",
     description:
       "Code ninja making sure everything runs smoothly and efficiently.",
   },
@@ -79,7 +79,7 @@ export default function AboutPage() {
             <div className="relative group">
               <div className="absolute inset-0 bg-gradient-to-br from-[#0D3B66] via-[#154A8A] to-[#1E5CAF] rounded-2xl opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
               <Image
-                src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80"
+                src="/home/office.jpg"
                 alt="Our story"
                 width={500}
                 height={400}

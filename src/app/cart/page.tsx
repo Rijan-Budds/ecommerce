@@ -111,7 +111,7 @@ export default function CartPage() {
     } finally {
       setLoading(false);
     }
-  }, [cart, setFieldValue]);
+  }, [cart.items.length, cart.fetchCart, setFieldValue]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     loadData();

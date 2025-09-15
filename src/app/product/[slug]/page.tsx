@@ -31,6 +31,8 @@ async function fetchProduct(slug: string) {
       category: string;
       discountPercentage?: number;
       inStock?: boolean;
+      stockQuantity: number;
+      description: string;
     }
   } catch (error) {
     console.error('Error fetching product:', error)
@@ -130,39 +132,29 @@ export default async function ProductDetailPage({
                 <span className="text-lg text-gray-500">NPR</span>
               </div>
 
+              {/* Stock Information */}
+              <div className="flex items-center space-x-4">
+                <span className="text-lg font-medium text-gray-900">Stock:</span>
+                {product.stockQuantity > 0 ? (
+                  <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                    {product.stockQuantity} items available
+                  </span>
+                ) : (
+                  <span className="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">
+                    Out of Stock
+                  </span>
+                )}
+              </div>
+
               {/* Description */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-gray-900">Product Description</h3>
                 <p className="text-gray-700 leading-relaxed text-lg">
-                  Experience the perfect blend of innovation and performance with this exceptional product. 
-                  Designed with cutting-edge technology and premium materials, it delivers outstanding quality 
-                  and reliability for all your needs. Whether you&apos;re a professional or enthusiast, this product 
-                  will exceed your expectations and provide years of dependable service.
+                  {product.description || "Experience the perfect blend of innovation and performance with this exceptional product. Designed with cutting-edge technology and premium materials, it delivers outstanding quality and reliability for all your needs."}
                 </p>
               </div>
 
-              {/* Features */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900">Key Features</h3>
-                <ul className="space-y-2">
-                  <li className="flex items-center space-x-3">
-                    <div className="w-2 h-2 bg-gradient-to-r from-[#0D3B66] to-[#1E5CAF] rounded-full"></div>
-                    <span className="text-gray-700">Premium quality construction</span>
-                  </li>
-                  <li className="flex items-center space-x-3">
-                    <div className="w-2 h-2 bg-gradient-to-r from-[#0D3B66] to-[#1E5CAF] rounded-full"></div>
-                    <span className="text-gray-700">Advanced technology integration</span>
-                  </li>
-                  <li className="flex items-center space-x-3">
-                    <div className="w-2 h-2 bg-gradient-to-r from-[#0D3B66] to-[#1E5CAF] rounded-full"></div>
-                    <span className="text-gray-700">Reliable performance</span>
-                  </li>
-                  <li className="flex items-center space-x-3">
-                    <div className="w-2 h-2 bg-gradient-to-r from-[#0D3B66] to-[#1E5CAF] rounded-full"></div>
-                    <span className="text-gray-700">1-year warranty included</span>
-                  </li>
-                </ul>
-              </div>
+
 
               {/* Product Actions */}
               <div className="pt-6 border-t border-gray-200">

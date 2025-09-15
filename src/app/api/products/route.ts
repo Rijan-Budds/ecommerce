@@ -31,6 +31,8 @@ export async function GET(req: Request) {
     image: d.image,
     discountPercentage: d.discountPercentage && d.discountPercentage > 0 ? d.discountPercentage : undefined,
     inStock: d.inStock !== false, // default to true if not set
+    stockQuantity: d.stockQuantity || 0,
+    description: d.description || "",
   }));
   
   return NextResponse.json({ products });

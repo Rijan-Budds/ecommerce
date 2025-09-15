@@ -74,8 +74,24 @@ export async function POST(req: Request) {
     if (action === 'add') {
       const { productId, quantity = 1 } = body;
       if (!productId) return NextResponse.json({ message: 'productId required' }, { status: 400 });
+      
+      // Check product stock availability
+      const product = await Product.findById(productId);
+      if (!product) return NextResponse.json({ message: 'Product not found' }, { status: 404 });
+      if (!product.inStock || product.stockQuantity <= 0) {
+        return NextResponse.json({ message: 'Product is out of stock' }, { status: 400 });
+      }
+      
       const existing = user.cart.find((ci: ICartItem) => ci.productId === productId);
-      if (existing) existing.quantity += Number(quantity);
+      const newQuantity = existing ? existing.quantity + Number(quantity) : Number(quantity);
+      
+      if (newQuantity > product.stockQuantity) {
+        return NextResponse.json({ 
+          message: `Only ${product.stockQuantity} items available in stock` 
+        }, { status: 400 });
+      }
+      
+      if (existing) existing.quantity = newQuantity;
       else user.cart.push({ productId, quantity: Number(quantity) });
       await user.save();
       return NextResponse.json({ message: 'Added to cart' });
@@ -86,8 +102,20 @@ export async function POST(req: Request) {
       if (!productId || typeof quantity !== 'number') return NextResponse.json({ message: 'productId and quantity required' }, { status: 400 });
       const existing = user.cart.find((ci: ICartItem) => ci.productId === productId);
       if (!existing) return NextResponse.json({ message: 'Item not found' }, { status: 404 });
-      if (quantity <= 0) user.cart = user.cart.filter((ci: ICartItem) => ci.productId !== productId);
-      else existing.quantity = quantity;
+      
+      if (quantity <= 0) {
+        user.cart = user.cart.filter((ci: ICartItem) => ci.productId !== productId);
+      } else {
+        // Check stock availability for quantity update
+        const product = await Product.findById(productId);
+        if (!product) return NextResponse.json({ message: 'Product not found' }, { status: 404 });
+        if (quantity > product.stockQuantity) {
+          return NextResponse.json({ 
+            message: `Only ${product.stockQuantity} items available in stock` 
+          }, { status: 400 });
+        }
+        existing.quantity = quantity;
+      }
       await user.save();
       return NextResponse.json({ message: 'Cart updated' });
     }

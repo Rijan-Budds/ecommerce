@@ -29,8 +29,8 @@ export async function POST(req: Request) {
   const auth = await getAuth();
   if (!auth || auth.role !== "admin")
     return NextResponse.json({ message: "Forbidden" }, { status: 403 });
-  const { name, slug: incomingSlug, price, category, image } = await req.json();
-  if (!name || price == null || !category || !image)
+  const { name, slug: incomingSlug, price, category, image, description, stockQuantity, inStock } = await req.json();
+  if (!name || price == null || !category || !image || stockQuantity == null)
     return NextResponse.json({ message: "Missing fields" }, { status: 400 });
   const existingByName = await Product.findOne({
     name: { $regex: `^${name.trim()}$`, $options: "i" },
@@ -50,6 +50,9 @@ export async function POST(req: Request) {
     price: Number(price),
     category: String(category).toLowerCase().trim(),
     image: String(image).trim(),
+    description: description || "",
+    stockQuantity: Number(stockQuantity),
+    inStock: inStock !== undefined ? inStock : Number(stockQuantity) > 0,
   });
   return NextResponse.json(
     {
@@ -61,6 +64,9 @@ export async function POST(req: Request) {
         price: created.price,
         category: created.category,
         image: created.image,
+        description: created.description,
+        stockQuantity: created.stockQuantity,
+        inStock: created.inStock,
       },
     },
     { status: 201 }

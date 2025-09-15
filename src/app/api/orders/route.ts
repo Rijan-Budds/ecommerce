@@ -35,7 +35,23 @@ export async function POST(req: Request) {
   const ids = user.cart.map((ci: ICartItem) => ci.productId);
   const docs = ids.length ? await Product.find({ _id: { $in: ids } }).lean() : [];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const productMap = new Map(docs.map((d: any) => [String(d._id), { price: d.price, name: d.name, image: d.image }]));
+  const productMap = new Map(docs.map((d: any) => [String(d._id), { price: d.price, name: d.name, image: d.image, stockQuantity: d.stockQuantity }]));
+
+  // Check stock availability and reduce stock
+  for (const ci of user.cart) {
+    const product = await Product.findById(ci.productId);
+    if (!product) {
+      return NextResponse.json({ message: `Product not found: ${ci.productId}` }, { status: 400 });
+    }
+    if (product.stockQuantity < ci.quantity) {
+      return NextResponse.json({ message: `Insufficient stock for ${product.name}. Available: ${product.stockQuantity}, Requested: ${ci.quantity}` }, { status: 400 });
+    }
+    
+    // Reduce stock
+    product.stockQuantity -= ci.quantity;
+    product.inStock = product.stockQuantity > 0;
+    await product.save();
+  }
   const subtotal = user.cart.reduce((sum: number, ci: ICartItem) => {
     const price = productMap.get(ci.productId)?.price || 0;
     return sum + price * ci.quantity;

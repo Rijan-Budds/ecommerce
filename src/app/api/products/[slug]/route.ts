@@ -17,6 +17,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
       image: doc.image,
       discountPercentage: doc.discountPercentage && doc.discountPercentage > 0 ? doc.discountPercentage : undefined,
       inStock: doc.inStock !== false, // default to true if not set
+      stockQuantity: doc.stockQuantity || 0,
+      description: doc.description || "",
     }});
   } catch (error: unknown) {
     console.error('Error fetching product:', error);

@@ -265,7 +265,7 @@ function Page() {
 
                     <div className="p-6 space-y-4 flex-1 flex flex-col">
                       <div className="flex-1">
-                        <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-2 group-hover:text-[#0D3B66] transition-colors overflow-hidden text-ellipsis whitespace-nowrap">
+                        <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-2 group-hover:text-[#0D3B66] transition-colors line-clamp-2 h-14">
                           {product.name}
                         </h3>
                         <div className="flex items-baseline space-x-2">

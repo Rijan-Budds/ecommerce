@@ -103,8 +103,8 @@ const CategoryPage = async ({ params }: { params: Promise<{ slug: string }> }) =
               {/* Products Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                 {products.map((p) => (
-                  <div key={p.id} className="group">
-                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2">
+                  <div key={p.id} className="group h-full">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg overflow-hidden hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-2 h-full flex flex-col">
                       {/* Product Image */}
                       <Link href={`/product/${p.slug}`} passHref>
                         <div className="relative cursor-pointer">
@@ -144,9 +144,9 @@ const CategoryPage = async ({ params }: { params: Promise<{ slug: string }> }) =
                       </Link>
 
                       {/* Product Info */}
-                      <div className="p-6 space-y-4">
-                        <div>
-                          <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-2 line-clamp-2 group-hover:text-[#0D3B66] transition-colors">
+                      <div className="p-6 space-y-4 flex-1 flex flex-col">
+                        <div className="flex-1">
+                          <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-2 line-clamp-2 h-14 group-hover:text-[#0D3B66] transition-colors">
                             {p.name}
                           </h3>
                           <div className="flex items-baseline space-x-2">

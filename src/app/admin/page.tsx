@@ -15,6 +15,7 @@ import {
 } from "react-icons/fa";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
+import OrderManagement from "@/components/admin/OrderManagement";
 
 interface User {
   _id: string;
@@ -27,7 +28,7 @@ interface Order {
   userId: string;
   username: string;
   email: string;
-  status: "pending" | "canceled" | "delivered";
+  status: "pending" | "processing" | "shipped" | "out-for-delivery" | "delivered" | "canceled" | "returned";
   createdAt: string;
   subtotal: number;
   deliveryFee: number;
@@ -38,6 +39,12 @@ interface Order {
     address: { street: string; city: string };
   };
   items: { productId: string; quantity: number }[];
+  statusHistory?: {
+    status: string;
+    timestamp: string;
+    updatedBy: string;
+  }[];
+  lastStatusUpdate?: string;
 }
 
 export default function AdminPage() {
@@ -72,12 +79,8 @@ export default function AdminPage() {
 
   // Pagination states
   const [productsPage, setProductsPage] = useState(1);
-  const [ordersPage, setOrdersPage] = useState(1);
   const [usersPage, setUsersPage] = useState(1);
   const itemsPerPage = 5;
-  
-  // Order filtering
-  const [orderStatusFilter, setOrderStatusFilter] = useState<"all" | "pending" | "delivered" | "canceled">("all");
 
   const router = useRouter();
 
@@ -133,10 +136,21 @@ export default function AdminPage() {
     }
   };
 
-  const updateStatus = async (
-    orderId: string,
-    status: "pending" | "canceled" | "delivered"
-  ) => {
+  const reloadOrders = async () => {
+    try {
+      const res = await fetch("/api/admin/orders", {
+        credentials: "include",
+      });
+      const data = await res.json();
+      setOrders(data.orders || []);
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : "Failed to reload orders";
+      toast.error(errorMessage);
+    }
+  };
+
+  const updateStatus = async (orderId: string, status: string) => {
     try {
       const res = await fetch(`/api/admin/orders/${orderId}`, {
         method: "PATCH",
@@ -148,13 +162,15 @@ export default function AdminPage() {
       if (!res.ok) throw new Error(data.message || "Failed to update");
 
       setOrders((prev) =>
-        prev.map((o) => (o.orderId === orderId ? { ...o, status } : o))
+        prev.map((o) => (o.orderId === orderId ? { ...o, status: status as Order['status'] } : o))
       );
-      toast.success("Order status updated");
+      
+      // Reload orders to get updated status history
+      await reloadOrders();
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : "Failed to update status";
-      toast.error(errorMessage);
+      throw new Error(errorMessage);
     }
   };
 
@@ -320,24 +336,23 @@ export default function AdminPage() {
     switch (status) {
       case "pending":
         return "bg-yellow-100 text-yellow-800";
+      case "processing":
+        return "bg-blue-100 text-blue-800";
+      case "shipped":
+        return "bg-indigo-100 text-indigo-800";
+      case "out-for-delivery":
+        return "bg-purple-100 text-purple-800";
       case "delivered":
         return "bg-green-100 text-green-800";
       case "canceled":
         return "bg-red-100 text-red-800";
+      case "returned":
+        return "bg-gray-100 text-gray-800";
       default:
         return "bg-gray-100 text-gray-800";
     }
   };
 
-  const getProductDetails = (productId: string) => {
-    return products.find((product) => product.id === productId);
-  };
-  
-  // Filter orders based on status
-  const getFilteredOrders = () => {
-    if (orderStatusFilter === "all") return orders;
-    return orders.filter(order => order.status === orderStatusFilter);
-  };
 
   // Pagination helper functions
   const getPaginatedData = <T,>(data: T[], page: number): T[] => {
@@ -516,7 +531,6 @@ export default function AdminPage() {
                     );
                     // Reset pagination when switching tabs
                     setProductsPage(1);
-                    setOrdersPage(1);
                     setUsersPage(1);
                   }}
                   className={`flex items-center space-x-2 px-6 py-4 font-semibold transition-colors ${
@@ -647,230 +661,12 @@ export default function AdminPage() {
           )}
 
           {activeTab === "orders" && (
-            <div className="space-y-8">
-              {/* Header */}
-              <div className="bg-gradient-to-r from-[#0D3B66] to-[#1E5CAF] text-white rounded-2xl shadow-lg p-6">
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-                  <div>
-                    <h3 className="text-2xl font-bold mb-2">Orders Management</h3>
-                    <div className="flex flex-wrap gap-2 text-sm">
-                      <span className="bg-white/20 px-3 py-1 rounded-full">
-                        Total: {orders.length}
-                      </span>
-                      <span className="bg-yellow-500/20 px-3 py-1 rounded-full">
-                        Pending: {orders.filter(o => o.status === 'pending').length}
-                      </span>
-                      <span className="bg-green-500/20 px-3 py-1 rounded-full">
-                        Delivered: {orders.filter(o => o.status === 'delivered').length}
-                      </span>
-                      <span className="bg-red-500/20 px-3 py-1 rounded-full">
-                        Canceled: {orders.filter(o => o.status === 'canceled').length}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-2">
-                    <select
-                      value={orderStatusFilter}
-                      onChange={(e) => {
-                        setOrderStatusFilter(e.target.value as "all" | "pending" | "delivered" | "canceled");
-                        setOrdersPage(1); // Reset to first page when filtering
-                      }}
-                      className="bg-white/20 border border-white/30 rounded-lg px-3 py-1 text-sm text-white backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-white/50"
-                    >
-                      <option value="all" className="text-gray-900">All Orders</option>
-                      <option value="pending" className="text-gray-900">Pending</option>
-                      <option value="delivered" className="text-gray-900">Delivered</option>
-                      <option value="canceled" className="text-gray-900">Canceled</option>
-                    </select>
-                    <div className="text-right text-sm">
-                      <div className="opacity-80">Page {ordersPage} of {getTotalPages(getFilteredOrders().length)}</div>
-                      <div className="opacity-70 text-xs">{itemsPerPage} orders per page</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Orders List */}
-              <div className="space-y-6">
-                {orders.length === 0 ? (
-                  <div className="bg-white rounded-2xl shadow-md p-12 text-center">
-                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <FaShoppingCart className="w-8 h-8 text-gray-400" />
-                    </div>
-                    <h3 className="text-xl font-medium text-gray-900 mb-2">No orders yet</h3>
-                    <p className="text-gray-500">Orders will appear here when customers start placing them.</p>
-                  </div>
-                ) : getFilteredOrders().length === 0 ? (
-                  <div className="bg-white rounded-2xl shadow-md p-12 text-center">
-                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <FaShoppingCart className="w-8 h-8 text-gray-400" />
-                    </div>
-                    <h3 className="text-xl font-medium text-gray-900 mb-2">
-                      No {orderStatusFilter !== "all" ? orderStatusFilter : ""} orders found
-                    </h3>
-                    <p className="text-gray-500">
-                      {orderStatusFilter !== "all" 
-                        ? `There are no ${orderStatusFilter} orders at the moment.`
-                        : "Try adjusting your filter or check if orders exist."
-                      }
-                    </p>
-                  </div>
-                ) : getPaginatedData(getFilteredOrders(), ordersPage).length === 0 ? (
-                  <div className="bg-white rounded-2xl shadow-md p-12 text-center">
-                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <FaShoppingCart className="w-8 h-8 text-gray-400" />
-                    </div>
-                    <h3 className="text-xl font-medium text-gray-900 mb-2">No orders on this page</h3>
-                    <p className="text-gray-500">Try navigating to a different page.</p>
-                  </div>
-                ) : (
-                  getPaginatedData(getFilteredOrders(), ordersPage).map((order) => (
-                  <div
-                    key={order.orderId}
-                    className="bg-white rounded-2xl shadow-md p-6 hover:shadow-lg transition-shadow duration-200"
-                  >
-                    {/* Order Header */}
-                    <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-4">
-                      <div>
-                        <h4 className="text-lg font-semibold text-gray-900">
-                          {order.username}
-                        </h4>
-                        <p className="text-gray-500 text-sm">{order.email}</p>
-                      </div>
-                      <div className="text-right mt-2 md:mt-0">
-                        <p className="text-xs text-gray-400">
-                          {new Date(order.createdAt).toLocaleString()}
-                        </p>
-                        <span
-                          className={`mt-1 inline-block px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
-                            order.status
-                          )}`}
-                        >
-                          {order.status}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Ordered Items */}
-                    <div className="mb-4">
-                      <p className="text-sm text-gray-500 mb-2 font-medium">
-                        Ordered Items:
-                      </p>
-                      <div className="space-y-2">
-                        {order.items.map((item, index) => {
-                          const product = getProductDetails(item.productId);
-                          return product ? (
-                            <div
-                              key={index}
-                              className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                            >
-                              <Image
-                                src={product.image}
-                                alt={product.name}
-                                width={48}
-                                height={48}
-                                className="w-12 h-12 object-cover rounded-lg"
-                              />
-                              <div className="flex-1 min-w-0">
-                                <p className="font-semibold text-sm truncate">
-                                  {product.name}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  Quantity: {item.quantity}
-                                </p>
-                                <p className="text-xs text-gray-500">
-                                  रु{product.price.toFixed(2)} each
-                                </p>
-                              </div>
-                            </div>
-                          ) : (
-                            <div
-                              key={index}
-                              className="p-3 bg-gray-50 rounded-lg"
-                            >
-                              <p className="text-xs text-red-500">
-                                Product not found (ID: {item.productId})
-                              </p>
-                              <p className="text-xs text-gray-500">
-                                Quantity: {item.quantity}
-                              </p>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Order Details */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 text-sm">
-                      <div>
-                        <p className="text-gray-400">Address</p>
-                        <p className="font-medium text-gray-700">
-                          {order.customer?.address?.street},{" "}
-                          {order.customer?.address?.city}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-gray-400">Total</p>
-                        <p className="font-bold text-lg text-[#0D3B66]">
-                          रु{order.grandTotal?.toFixed(2)}
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      <button
-                        onClick={() => updateStatus(order.orderId, "pending")}
-                        className="px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors text-sm font-medium"
-                      >
-                        Pending
-                      </button>
-                      <button
-                        onClick={() => updateStatus(order.orderId, "delivered")}
-                        className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm font-medium"
-                      >
-                        Delivered
-                      </button>
-                      <button
-                        onClick={() => updateStatus(order.orderId, "canceled")}
-                        className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm font-medium"
-                      >
-                        Canceled
-                      </button>
-                      <button
-                        onClick={() => deleteOrder(order.orderId)}
-                        className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors flex items-center space-x-2 text-sm font-medium"
-                      >
-                        <FaTrash className="w-3 h-3" />
-                        <span>Delete</span>
-                      </button>
-                    </div>
-                  </div>
-                  ))
-                )}
-              </div>
-
-              {/* Pagination */}
-              {getFilteredOrders().length > 0 && (
-                <div className="bg-white rounded-2xl shadow-md p-6">
-                  <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                    <div className="text-sm text-gray-600">
-                      Showing {Math.min((ordersPage - 1) * itemsPerPage + 1, getFilteredOrders().length)} to{' '}
-                      {Math.min(ordersPage * itemsPerPage, getFilteredOrders().length)} of {getFilteredOrders().length} 
-                      {orderStatusFilter !== "all" ? `${orderStatusFilter} ` : ""}orders
-                      {orderStatusFilter !== "all" && orders.length !== getFilteredOrders().length && (
-                        <span className="text-gray-400"> (filtered from {orders.length} total)</span>
-                      )}
-                    </div>
-                    <PaginationControls
-                      currentPage={ordersPage}
-                      totalPages={getTotalPages(getFilteredOrders().length)}
-                      onPageChange={setOrdersPage}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
+            <OrderManagement
+              orders={orders}
+              products={products}
+              onUpdateStatus={updateStatus}
+              onDeleteOrder={deleteOrder}
+            />
           )}
 
           {activeTab === "products" && (

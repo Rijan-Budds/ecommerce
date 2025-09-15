@@ -14,10 +14,16 @@ export interface IOrderItem {
   price?: number;
 }
 
+export interface IStatusHistory {
+  status: string;
+  timestamp: Date;
+  updatedBy: string;
+}
+
 export interface IOrder {
   items: IOrderItem[];
   createdAt: Date;
-  status: "pending" | "canceled" | "delivered";
+  status: "pending" | "processing" | "shipped" | "out-for-delivery" | "delivered" | "canceled" | "returned";
   subtotal: number;
   deliveryFee: number;
   grandTotal: number;
@@ -26,6 +32,8 @@ export interface IOrder {
     email: string;
     address: { street: string; city: string };
   };
+  statusHistory?: IStatusHistory[];
+  lastStatusUpdate?: Date;
 }
 
 export interface IUser extends Document {
@@ -84,10 +92,20 @@ const OrderItemSchema = new Schema({
   price: Number,
 });
 
+const StatusHistorySchema = new Schema({
+  status: { type: String, required: true },
+  timestamp: { type: Date, default: Date.now },
+  updatedBy: { type: String, required: true },
+});
+
 const OrderSchema = new Schema({
   items: [OrderItemSchema],
   createdAt: { type: Date, default: Date.now },
-  status: { type: String, enum: ["pending", "canceled", "delivered"], default: "pending" },
+  status: { 
+    type: String, 
+    enum: ["pending", "processing", "shipped", "out-for-delivery", "delivered", "canceled", "returned"], 
+    default: "pending" 
+  },
   subtotal: { type: Number, default: 0 },
   deliveryFee: { type: Number, default: 0 },
   grandTotal: { type: Number, default: 0 },
@@ -96,6 +114,8 @@ const OrderSchema = new Schema({
     email: String,
     address: { street: String, city: String },
   },
+  statusHistory: { type: [StatusHistorySchema], default: [] },
+  lastStatusUpdate: { type: Date, default: Date.now },
 });
 
 const UserSchema = new Schema({

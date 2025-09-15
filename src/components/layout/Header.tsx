@@ -114,7 +114,15 @@ const Header = () => {
         </Link>
 
         {/* Search Bar */}
-        <form action="/search" className="flex flex-1 max-w-xl mx-6">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const query = (e.currentTarget.q as HTMLInputElement).value.trim();
+            if (!query) return;
+            window.location.href = `/search?q=${encodeURIComponent(query)}`;
+          }}
+          className="flex flex-1 max-w-xl mx-6"
+        >
           <input
             type="text"
             name="q"
@@ -128,6 +136,7 @@ const Header = () => {
             <FaSearch />
           </button>
         </form>
+
 
         {/* Icons */}
         <div className="flex items-center gap-4">

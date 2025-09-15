@@ -77,7 +77,8 @@ export default function CartPage() {
         
         console.log("Created order:", createdOrder);
         
-        await cart.fetchCart();
+        // Clear the cart after successful order
+        cart.clearCart();
         await refreshOrders();
         
         if (createdOrder && createdOrder._id) {
@@ -94,19 +95,23 @@ export default function CartPage() {
     },
   });
 
+  const { setFieldValue } = formik;
   const loadData = useCallback(async () => {
     try {
-      await cart.fetchCart();
+      // Only fetch cart if it's empty or we need to refresh
+      if (cart.items.length === 0) {
+        await cart.fetchCart();
+      }
       const citiesRes = await fetch(`/api/shipping/cities`);
       const citiesData = await citiesRes.json();
       setCities(citiesData.cities || []);
       if ((citiesData.cities || []).length > 0) {
-        formik.setFieldValue("city", citiesData.cities[0].name);
+        setFieldValue("city", citiesData.cities[0].name);
       }
     } finally {
       setLoading(false);
     }
-  }, [cart, formik]);
+  }, [cart, setFieldValue]);
 
   useEffect(() => {
     loadData();
@@ -127,7 +132,7 @@ export default function CartPage() {
     return cities.find((c) => c.name === formik.values.city)?.fee ?? 5;
   }, [cities, formik.values.city]);
 
-  const grandTotal = subtotal + deliveryFee;
+  const grandTotal = useMemo(() => subtotal + deliveryFee, [subtotal, deliveryFee]);
 
   const updateQuantity = async (productId: string, delta: number) => {
     const current = items.find((it) => it.productId === productId);

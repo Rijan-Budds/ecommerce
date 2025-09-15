@@ -30,7 +30,7 @@ export default function MapComponent() {
     <MapContainer
       center={[27.6734, 85.4348]}
       zoom={15}
-      scrollWheelZoom={false}
+scrollWheelZoom={false}
       className="h-80 w-full z-10"
       style={{ minHeight: '320px' }}
     >
